@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { displaySnackNotification } from '@services/states/app';
 import { getMessageByCode } from '@services/i18n/translation';
 import { apiCongregationDelete } from '@services/api/congregation';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import { handleDeleteDatabase } from '@services/app';
 
 const useDeleteCongregation = () => {

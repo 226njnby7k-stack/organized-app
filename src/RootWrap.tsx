@@ -8,7 +8,6 @@ import logger from '@services/logger/index';
 import App from './App';
 import '@global/global.css';
 import '@global/index.css';
-import '@services/firebase/index';
 import '@services/i18n/index';
 
 const RootWrap = () => {

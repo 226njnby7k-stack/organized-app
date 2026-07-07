@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAtomValue, useSetAtom } from 'jotai';
 import { handleDeleteDatabase, loadApp, runUpdater } from '@services/app';
 import { useAppTranslation, useFirebaseAuth } from '@hooks/index';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import { decryptData } from '@services/encryption/index';
 import { apiValidateMe } from '@services/api/user';
 import { displayOnboardingFeedback } from '@services/states/app';

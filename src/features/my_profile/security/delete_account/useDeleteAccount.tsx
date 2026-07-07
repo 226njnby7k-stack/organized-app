@@ -9,7 +9,7 @@ import {
   apiCongregationDelete,
   apiCongregationUsersGet,
 } from '@services/api/congregation';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import { handleDeleteDatabase } from '@services/app';
 import { apiPocketDelete } from '@services/api/pocket';
 

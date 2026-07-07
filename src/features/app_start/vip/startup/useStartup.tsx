@@ -30,7 +30,7 @@ import {
 import { APP_ROLES, VIP_ROLES } from '@constants/index';
 import { handleDeleteDatabase, loadApp, runUpdater } from '@services/app';
 import { apiValidateMe } from '@services/api/user';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import useFirebaseAuth from '@hooks/useFirebaseAuth';
 
 const useStartup = () => {

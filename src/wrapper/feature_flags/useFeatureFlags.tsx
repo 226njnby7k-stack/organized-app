@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAtom, useAtomValue, useSetAtom } from 'jotai';
-import { getApp } from 'firebase/app';
-import { getId, getInstallations } from 'firebase/installations';
 import { useQuery } from '@tanstack/react-query';
 import { apiFeatureFlagsGet } from '@services/api/app';
 import { apiHostState, featureFlagsState, isOnlineState } from '@states/app';
@@ -74,16 +72,14 @@ const useFeatureFlags = () => {
   useEffect(() => {
     const handleLoading = async () => {
       try {
-        const app = getApp();
+        // Self-hosted (M4): a stable anonymous install id kept locally, in
+        // place of Firebase Installations. Same purpose (identify this install
+        // for feature flags), no Google dependency.
+        let id = localStorage.getItem('organized_installation_id') ?? '';
 
-        let id: string;
-
-        if (import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST) {
-          id = 'ad00115e-46da-476c-a7bf-d160b4eaa1e6';
-        } else {
-          const installations = getInstallations(app);
-
-          id = await getId(installations);
+        if (!id) {
+          id = crypto.randomUUID();
+          localStorage.setItem('organized_installation_id', id);
         }
 
         setInstallationId(id);

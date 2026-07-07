@@ -17,7 +17,7 @@ import { NextStepType } from './index.types';
 import useAuth from '../hooks/useAuth';
 import useFeedback from '@features/app_start/shared/hooks/useFeedback';
 import { UserLoginResponseType } from '@definition/api';
-import { userSignInCustomToken } from '@services/firebase/auth';
+import { userSignInCustomToken } from '@services/auth';
 
 const useEmailSent = () => {
   const { t } = useAppTranslation();
@@ -59,7 +59,7 @@ const useEmailSent = () => {
   const handleAuthorization = async (data: UserLoginResponseType) => {
     const nextStep: NextStepType = determineNextStep(data);
 
-    if (nextStep.encryption || nextStep.createCongregation) {
+    if (nextStep.isVerifyMFA || nextStep.encryption || nextStep.createCongregation) {
       await updateUserSettings(data, nextStep);
     }
 

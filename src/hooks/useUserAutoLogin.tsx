@@ -13,7 +13,7 @@ import {
   userIDState,
 } from '@states/app';
 import { apiValidateMe } from '@services/api/user';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import { handleDeleteDatabase } from '@services/app';
 import { APP_ROLES, isTest, VIP_ROLES } from '@constants/index';
 import { accountTypeState, congIDState } from '@states/settings';

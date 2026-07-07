@@ -4,7 +4,7 @@ import { useSetAtom } from 'jotai';
 import {
   setAuthPersistence,
   userSignInCustomToken,
-} from '@services/firebase/auth';
+} from '@services/auth';
 import { apiUpdatePasswordlessInfo } from '@services/api/user';
 import {
   displayOnboardingFeedback,

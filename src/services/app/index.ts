@@ -14,7 +14,7 @@ import {
   isSetupState,
   offlineOverrideState,
 } from '@states/app';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import {
   disconnectCongAccount,
   displaySnackNotification,

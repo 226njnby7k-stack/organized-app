@@ -21,7 +21,7 @@ import {
   congNameState,
   fullnameState,
 } from '@states/settings';
-import { userSignOut } from '@services/firebase/auth';
+import { userSignOut } from '@services/auth';
 import {
   Children,
   cloneElement,

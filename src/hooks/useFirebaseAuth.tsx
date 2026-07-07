@@ -1,56 +1,38 @@
 import { useEffect, useState } from 'react';
-import { User, getAuth, onAuthStateChanged } from 'firebase/auth';
-import {
-  displaySnackNotification,
-  setCurrentProvider,
-} from '@services/states/app';
-import { getTranslation } from '@services/i18n/translation';
-import { dbAppSettingsSaveProfilePic } from '@services/dexie/settings';
+import { useAtomValue } from 'jotai';
 import worker from '@services/worker/backupWorker';
+import {
+  AuthUser,
+  currentAuthUser,
+  isDeviceAuthenticatedState,
+  restoreSession,
+} from '@services/auth';
 
+// Self-hosted auth (M4): replaces the Firebase onAuthStateChanged listener.
+// On mount we try to restore a session from the httpOnly visitorid cookie; the
+// reactive isDeviceAuthenticatedState atom then tracks login/logout thereafter.
 const useFirebaseAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<User | undefined>(undefined);
+  const isAuthenticated = useAtomValue(isDeviceAuthenticatedState);
+  const [user, setUser] = useState<AuthUser | undefined>(currentAuthUser());
 
   useEffect(() => {
-    const auth = getAuth();
-
-    onAuthStateChanged(auth, async (user: User) => {
+    const init = async () => {
       try {
-        setUser(user);
+        const restored = currentAuthUser() ?? (await restoreSession());
+        setUser(restored);
 
-        if (user) {
+        if (restored) {
           worker.postMessage({
             field: 'idToken',
-            value: await user.getIdToken(),
+            value: await restored.getIdToken(),
           });
-
-          if (user.providerData.length > 1) {
-            displaySnackNotification({
-              header: getTranslation({ key: 'tr_errorTitle' }),
-              message: getTranslation({
-                key: 'oauthAccountExistsWithDifferentCredential',
-              }),
-              severity: 'error',
-            });
-
-            setIsAuthenticated(false);
-            return;
-          }
-
-          const provider = user.providerData[0]?.providerId || 'none';
-          setCurrentProvider(provider);
-
-          const photoURL = user.providerData[0]?.photoURL;
-          dbAppSettingsSaveProfilePic(photoURL, provider);
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
         }
       } catch (error) {
         console.error(error);
       }
-    });
+    };
+
+    init();
   }, []);
 
   return { isAuthenticated, user };

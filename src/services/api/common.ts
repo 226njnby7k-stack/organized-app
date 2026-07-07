@@ -6,7 +6,7 @@ import {
   userIDState,
 } from '@states/app';
 import { congIDState, congRoleState, JWLangState } from '@states/settings';
-import { currentAuthUser } from '@services/firebase/auth';
+import { currentAuthUser } from '@services/auth';
 
 export const apiDefault = async () => {
   const apiHost = store.get(apiHostState);
