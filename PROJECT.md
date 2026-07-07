@@ -26,7 +26,9 @@ self-hosted backend.
   no Firebase Hosting, no GCP.
 - **Privacy & security first.** Server stores only end-to-end encrypted sync data
   plus the minimum auth metadata. Server operator (us) must not be able to read
-  congregation data.
+  congregation **content**. (The operator *can* necessarily see routing/auth
+  **metadata** — emails, membership, sessions; and the client's E2E KDF is weak.
+  Both are documented as accepted risks in §10, audit M3–M5.)
 - **EU data residency** for GDPR alignment (congregation data stays in-region).
 - **TypeScript + Node** backend, to mirror upstream's own stack and ease porting
   their future server-side changes.
@@ -273,13 +275,55 @@ migrating blobs, but is no longer a Phase 1 dependency.
   from `enableMFA()`; `POST /mfa/verify-recovery-code` accepts + consumes a code
   as a TOTP alternative at login. Layerable without changing existing TOTP logic,
   but touches `User.ts` + a new route + the login gate → its own audit when built.
+- [accepted-risk, audit M3–M5] **Weak client E2E key-derivation (upstream crypto).**
+  The client encrypts with crypto-es `AES.encrypt(data, passphrase)` passing a
+  *string* passphrase (`src/services/encryption/index.ts`), so the AES key is
+  derived by OpenSSL **EVP_BytesToKey — MD5, a single iteration, 8-byte salt**.
+  The user-typed master key / access code is used (via that weak KDF) to *wrap*
+  the real random 256-bit data key (`useMasterKeyChange` / `useAccessCodeChange`:
+  `encryptData(remoteKey, confirmPassphrase)`). Consequence: anyone holding the
+  stored wrapped-key blob — **including us, the operator** — can mount a cheap
+  offline brute-force against a weak, human-chosen passphrase (no key stretching)
+  to unwrap the data key and decrypt everything under it. **Not patched inline:**
+  it is upstream client crypto shared with the entire Organized userbase, and
+  changing the KDF changes the ciphertext envelope, so *every* existing encrypted
+  field for *every* congregation would become undecryptable without a full
+  re-encryption migration — and it would hard-fork us from upstream's on-disk
+  format (breaks `git merge upstream`). Correct fix is **upstream**: a versioned
+  envelope (kdf-id + per-cong random salt + high iteration count, e.g. PBKDF2/
+  argon2) plus a migration, contributed back — tracked for an upstream PR / M8, not
+  a unilateral fork. Interim mitigations (already true): the master key is 256-bit
+  random when generated, so *private*-scoped fields are safe regardless of KDF;
+  advise congregations to set a **high-entropy access code** (not a short word) so
+  the *shared* scope isn't dictionary-brute-forceable; server-side at-rest AES
+  (`SEC_ENCRYPT_KEY`) is a second layer any *external* (non-operator) attacker must
+  also defeat.
+- [accepted-risk, audit M3–M5] **Operator can read sync metadata (structural).**
+  The §2 "operator must not read congregation data" guarantee holds for encrypted
+  **content** (persons, schedules, reports — E2E blobs the server has no keys for)
+  but **not for metadata**. The server necessarily sees, in cleartext at use-time:
+  user email addresses (auth/login), congregation membership + roles, the
+  user↔congregation graph, session/device details (IP, browser, last-seen —
+  `visitor_details`), file sizes, and sync/access timing. This is inherent to any
+  server that authenticates users by email and routes each user's data to the
+  right congregation; eliminating it needs a fundamentally different (blind /
+  oblivious / metadata-minimizing) architecture, out of scope for a fork of this
+  codebase. **Accepted** as a design property, not a bug. Partial mitigations
+  already in place: metadata is AES-encrypted **at rest** (`SEC_ENCRYPT_KEY`), so a
+  stolen disk alone doesn't reveal it; third-party geo-IP enrichment is now
+  **opt-in / off by default** (session 6) so we don't *add* location metadata via
+  external providers; EU residency keeps what metadata exists in-region. Revisit
+  only if the threat model changes to "operator is actively hostile" — which
+  self-hosting for one's own congregation does not assume.
 - [open] Realtime transport: WebSocket vs. polling. Decide at M5/M6.
 - [open] Backup strategy and where backups live (must stay EU + encrypted).
-- [open] **MFA on pocket sessions.** `pocketVisitorChecker` keys off the
-  `visitorid` cookie only and performs no TOTP check (pre-existing upstream; not
-  changed by M4). A pre-MFA regular user's cookie would pass it. Low priority /
-  pocket accounts are a distinct type, but worth revisiting when hardening auth.
-  Surfaced by the M4 re-audit.
+- [resolved, session 6] **MFA on pocket sessions.** `pocketVisitorChecker` keys
+  off the `visitorid` cookie only and performs no TOTP check, so a pre-MFA regular
+  (vip/admin) user's cookie could reach the pocket endpoints, bypassing both the
+  JWT and MFA gates. Fixed on the api `self-hosted` branch (commit `5f618fb`):
+  `pocketVisitorChecker` now rejects any account whose `role !== 'pocket'`, so the
+  cookie-only path is reachable only by genuine pocket accounts. Surfaced by the
+  M4 re-audit, closed in the M3–M5 consolidation audit.
 - [open] **Congregation directory model for self-hosted (→ M5.5).** Upstream
   gates congregation creation on the external sws2apps directory
   (`APP_CONGREGATION_API`) and sources countries from `APP_COUNTRY_API`. For a
@@ -295,6 +339,30 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 > Newest first. One short entry per working session.
 
+- **(session 6, 2026-07-07)** M3–M5 consolidation **security audit + hardening**.
+  Ran an adversarial multi-angle audit over everything built in M3–M5 (de-Googling
+  seam: disk storage, self-hosted identity, api_settings, register-password),
+  verified each finding in code, then shipped **8 hardening commits** on the api
+  `self-hosted` branch (all build-clean, re-audited):
+  `5f618fb` object-level authz on `/users/:id` (IDOR — `GET /users/{victim}/2fa/disable`
+  disabled *any* user's MFA; `/sessions` leaked device info) + pocket-only pocket
+  endpoints; `3429305` CORS — dropped reflect-any-origin-with-credentials (was
+  unconditional, all envs), single allowlist handler; `b3ecd05` MFA TOTP replay
+  block + `/verify-token` rate limit; `7cb96ee` removed account-enumeration oracle
+  + prod sign-in-link leak (fail closed when mail off); `636ae50` fail-fast on
+  missing `SEC_ENCRYPT_KEY`/`AUTH_JWT_*` + dropped dev encryption-key fallback
+  (lazy `getServerKey()` throws); `cf6a8bb` per-key async lock serializing
+  identity/token read-modify-write (fixes the M4-noted lost-update); `b672655`
+  cong_role only for own-congregation members; `5f31ac2` third-party geo-IP made
+  opt-in (default off) + non-blocking. Re-audit pass clean; two minor observations
+  folded in (lazy encryption key; cross-ref comment so the CORS allowlist and the
+  narrower sign-in-link allowlist aren't merged). Closed the prior open item "MFA
+  on pocket sessions" (§10). **Two findings accepted as risk, NOT patched** and
+  now documented in §10: (1) weak client E2E KDF — upstream `crypto-es` string
+  passphrase → MD5/1-iter EVP_BytesToKey; fixing it forks the ciphertext format
+  and belongs upstream; (2) operator can read sync **metadata** — structural to an
+  email-auth + per-congregation-routing sync server. Commits are local (api
+  `self-hosted`), not pushed. Docs (this file) updated in the client repo.
 - **(session 5, 2026-07-07)** M5 core + docs reconciliation. Migrated
   `api_settings_v3` (minimum client version) off Firestore to
   `v3/api/settings.txt` on the disk adapter — **the last Firestore usage is now
