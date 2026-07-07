@@ -102,13 +102,13 @@ power/ISP/router. Home is ideal for the dev/staging instance.
       now verifies our EdDSA JWTs; client `src/services/firebase/` replaced by
       `src/services/auth/`; OAuth popups dropped. TOTP MFA + sessions reused from
       upstream (invites deferred). Done — see §11 session 4.
-- [ ] **M5 — Firestore leftovers.** `api_settings_v3` (currently STUBBED to
-      env/default min-version — see M4 deviation), flags, installations →
-      storage adapter as JSON files. Also folded in here:
-      - [ ] safe `register-password` (requires an authenticated session or a
-            one-time email token) so password login is reachable for real users
-      - [ ] decide recovery-code story for TOTP (upstream may lack it — audit
-            `mfa_controller.ts` against AUTH_DESIGN §4 rules)
+- [~] **M5 — Firestore leftovers.** Core done — see §11 session 5.
+      - [x] `api_settings_v3` → `v3/api/settings.txt` on the disk adapter; last
+            Firestore usage removed. Flags + installations were already migrated.
+      - [x] safe `register-password` — `POST /users/:id/register-password` behind
+            `visitorChecker` + owner check; security-audited clean.
+      - [ ] TOTP recovery codes — audited (absent vs §4), **deferred** with a
+            proposed design (see §10). Carried forward.
 - [ ] **M5.5 — Self-hosted onboarding & congregation directory.** Sever the
       external **sws2apps directory** dependency and fix first-run onboarding.
       Today `createCongregation` (`congregation_controller.ts`) refuses to create
@@ -295,6 +295,23 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 > Newest first. One short entry per working session.
 
+- **(session 5, 2026-07-07)** M5 core + docs reconciliation. Migrated
+  `api_settings_v3` (minimum client version) off Firestore to
+  `v3/api/settings.txt` on the disk adapter — **the last Firestore usage is now
+  gone** (only the inert `firebase-admin/app` initializeApp remains, → M6). Flags
+  + installations were already on the adapter (M3). Shipped the guarded
+  `POST /users/:id/register-password` (behind `visitorChecker` + owner check,
+  reusing `updateIdentityPassword`/argon2 `hashPassword`) — the safe form of the
+  endpoint deferred in M4; security-audited clean (no account-takeover, JWT+session
+  required, blocked pre-MFA, never logs the password). Audited MFA recovery codes
+  vs AUTH_DESIGN §4: entirely absent — **deferred** with a proposed design (§10).
+  Docs reconciled: AUTH_DESIGN rewritten as v2; both PROJECT.md + AUTH_DESIGN.md
+  now versioned in this (client) repo. Commits (Mister, no email): client
+  `023bceff`; api `fbb503b` (api_settings) + `43fb5dc` (register-password).
+  Also this session: proved the M4 "lost congregation fields" report was NOT a
+  regression — `createCongregation` still auto-populates address/circuit/meeting
+  times from the directory (demoed live with a real congregation); the blank
+  fields were on a congregation created via a temporary dev bypass, since reverted.
 - **(session 4, 2026-07-06)** M4 auth replacement — completed. Forked
   `sws2apps/organized-app` (client) to github.com/226njnby7k-stack, `self-hosted`
   branch. Server: self-hosted identity module (jose EdDSA JWTs + argon2id +
