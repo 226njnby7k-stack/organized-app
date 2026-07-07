@@ -306,8 +306,8 @@ migrating blobs, but is no longer a Phase 1 dependency.
   required, blocked pre-MFA, never logs the password). Audited MFA recovery codes
   vs AUTH_DESIGN §4: entirely absent — **deferred** with a proposed design (§10).
   Docs reconciled: AUTH_DESIGN rewritten as v2; both PROJECT.md + AUTH_DESIGN.md
-  now versioned in this (client) repo. Commits (Mister, no email): client
-  `023bceff`; api `fbb503b` (api_settings) + `43fb5dc` (register-password).
+  now versioned in this (client) repo. Commits: client
+  `7cdbd9a8`; api `bd531f2` (api_settings) + `8590d6e` (register-password).
   Also this session: proved the M4 "lost congregation fields" report was NOT a
   regression — `createCongregation` still auto-populates address/circuit/meeting
   times from the directory (demoed live with a real congregation); the blank
@@ -323,8 +323,8 @@ migrating blobs, but is no longer a Phase 1 dependency.
   in-browser with a real authenticator: passwordless login → JWT → session →
   congregation create/master-key/access-code/sync, MFA enroll+verify, MFA gate on
   email login, session revoke from a 2nd device, silent refresh live.
-  Commits (pushed): api `152e970` (auth) + `90595a7` (storage race fix);
-  client `643058cf`.
+  Commits (pushed): api `d11dbe6` (auth) + `91c985c` (storage race fix);
+  client `fdd2e0ca`.
   Findings:
   - Upstream `verify-email-token` sets `mfaVerified: true` unconditionally (no
     TOTP gate) — so with OAuth removed and email-OTP the primary login, enabled
@@ -339,7 +339,7 @@ migrating blobs, but is no longer a Phase 1 dependency.
     collided → second `rename` threw ENOENT → 500 → frozen client. M4's write
     concurrency (silent refresh + per-request last-seen + 2 sessions on one
     `sessions.txt`) exposed it. Fixed with a monotonic counter + random suffix
-    (commit `90595a7`). Follow-up: concurrent read-modify-write of one file is
+    (commit `91c985c`). Follow-up: concurrent read-modify-write of one file is
     still last-writer-wins (lost-update); fine for single-process, revisit if the
     API is scaled out.
   - Self-hosted congregation-create depends on the external sws2apps directory →
@@ -367,7 +367,7 @@ migrating blobs, but is no longer a Phase 1 dependency.
   opaque literals). Hardened `safeResolve` to reject any `..` path segment
   (semantics-preserving; legit keys are fixed `v3/<kind>/<id>/<file>.txt`
   shapes). Verified: legit keys read/write, attack payload throws, victim file
-  never created. Committed (with fix) as `54a78d6` on `self-hosted`.
+  never created. Committed (with fix) as `b7b9a85` on `self-hosted`.
   Deviations from guide (upstream drift): (1) SIXTH direct bucket call site
   `Congregation.ts getPersons()` — patched same as `getCongPersons`; (2) upstream
   now reads `metadata.timeCreated` (`User.ts`, `getCongCreatedAt`) — disk adapter
