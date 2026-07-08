@@ -130,9 +130,13 @@ power/ISP/router. Home is ideal for the dev/staging instance.
       drop it) so congregations are created from user-entered details; lead
       congregation-less users to "set up your congregation" instead of directory
       search. Discovered during M4 E2E — see §10.
-- [ ] **M6 — Kill the Firebase dependency.** Remove `firebase` /
-      `firebase-admin` from both package.json files; both apps build and run with
-      no Google packages installed.
+- [x] **M6 — Kill the Firebase dependency.** Done — see §11 session 8. `firebase`
+      (client) and `firebase-admin` (server) uninstalled; both build/boot with no
+      Google packages. Server's last use was the inert `initializeApp` in
+      `firebase_config.ts` (deleted); client had no code usage left after M4. The
+      internal `services/firebase/*` dir (server) and `useFirebaseAuth` (client)
+      keep their names for upstream-merge friendliness — they are self-hosted impls,
+      not Firebase.
 - [ ] **M7 — Production deploy.** Hetzner VPS, Docker Compose (api + caddy +
       volume), backups + restore drill, hardening pass (§M8 old list absorbed here).
 - [ ] **M8 — Roadmap features.** Begin "awaiting development" items.
@@ -356,6 +360,20 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 > Newest first. One short entry per working session.
 
+- **(session 8, 2026-07-08)** **M6 complete: zero Google dependencies in either
+  repo, verified by clean build with the packages absent** — the goal this whole
+  project was founded on (§1). **Firebase dependency removed** from both repos;
+  each builds + boots with no Google packages installed. Server (api): the only
+  remaining `firebase-admin` use was the inert `initializeApp` in
+  `firebase_config.ts` (M3–M5 had already replaced storage/auth/Firestore) — file
+  deleted, import dropped from `app.ts`, `firebase-admin` uninstalled; dead
+  `FIREBASE_*`/`FIRESTORE_*`/`GOOGLE_CONFIG_BASE64` env removed from `.env.example`.
+  Client: no code imported `firebase` after M4 — package (and its dead
+  `@firebase/util` allowScripts entry) uninstalled; dead `VITE_FIREBASE_*` removed
+  from `.env.example` and `VITE_BACKEND_API` documented. Kept for upstream-merge
+  friendliness (§7): the server's `services/firebase/*` directory name and the
+  client's `useFirebaseAuth` hook name — both are self-hosted implementations, not
+  Firebase. Next: the deferred **TOTP recovery codes** (§10), then **M7**.
 - **(session 7, 2026-07-08)** **M5.5 — self-hosted onboarding**, shipped + verified
   end-to-end in a real browser. Server (api `4a5d5c8`): `SELF_HOSTED=true` serves a
   bundled static ISO country list (`constant/countries.ts`, 267 entries, shape
