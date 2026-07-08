@@ -338,6 +338,17 @@ migrating blobs, but is no longer a Phase 1 dependency.
   directly (no external validation; neutral defaults completed in settings). Shipped
   + E2E-verified in session 7. The wider entry-point routing (congregation-less
   users → "set up" vs directory search) remains a non-blocking follow-up.
+- [reference] **E2E regression test exists** for the self-hosted onboarding flow:
+  `organized-app/cypress/e2e/selfhosted.cy.ts` (`npm run test:e2e`, ports via
+  `CYPRESS_BASE_URL`/`CYPRESS_API_URL`; needs a `SELF_HOSTED=true` API +
+  `VITE_SELF_HOSTED=true` client). It drives passwordless login → create → master
+  key → access code → the InitialSetup prompt. **It already caught a genuine
+  production bug** — the token-login CORS regression (api `cc2e375`), which only
+  manifested on the single credentialed call in the flow and would likely have
+  slipped past a manual click-through. Argues for exercising at least this one
+  solid E2E path before each release, especially **before M7's production deploy**
+  (real congregation data). Not yet in CI — run it manually before merging
+  `self-hosted` → `main`.
 
 ---
 

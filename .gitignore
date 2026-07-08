@@ -1,3 +1,9 @@
+# Cypress run artifacts (the specs under cypress/e2e are tracked)
+cypress/screenshots/
+cypress/videos/
+cypress/downloads/
+cypress/out/
+
 # Logs
 logs
 *.log
