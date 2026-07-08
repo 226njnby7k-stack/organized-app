@@ -1,3 +1,5 @@
+// name kept for upstream-merge compatibility; contains self-hosted implementation, not Firebase
+
 import { useEffect, useState } from 'react';
 import { useAtomValue } from 'jotai';
 import worker from '@services/worker/backupWorker';
