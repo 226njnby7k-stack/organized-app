@@ -257,6 +257,17 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 ## 10. Open questions / decisions log
 
+- [CONSTRAINT, audit session 9] **The API MUST run as a single process/instance.**
+  Single-use guarantees (email login tokens, MFA recovery codes) and the identity
+  index/credential/session writes are made atomic by an *in-process* lock
+  (`services/identity/lock.ts`). The disk adapter's `saveObject` is atomic per
+  write (temp+rename), but a read-modify-write *sequence* is NOT serialized across
+  OS processes — so two instances could double-consume a one-time token/recovery
+  code (breaking single-use) or lose an index update. **Do not** add
+  `deploy.replicas`, `--scale api=N`, or a PM2/cluster `CMD` (guarded with a
+  comment in `docker-compose.yml`). Scaling out first requires a process-safe
+  atomic store (flock, or Postgres `DELETE … RETURNING`) — the M4 "swap to
+  Postgres" trigger below. Surfaced by the session-9 pre-recovery-codes audit.
 - [decided] Backend language: **Node + TypeScript** (mirror upstream).
 - [decided] Production host: **Hetzner VPS, EU**. Dev/staging: **home VM**.
 - [decided] DB: **PostgreSQL**. TLS: **Caddy**. Orchestration: **Docker Compose**.
@@ -276,14 +287,19 @@ migrating blobs, but is no longer a Phase 1 dependency.
   account-takeover primitive. Ship in M5 with a proper guard.
 - [decided, M4] **Refresh tokens not built** — upstream visitorid session +
   silent JWT re-issue via `/session-token` verified in E2E (13 live refreshes).
-- [audited, M5] **TOTP recovery codes: absent, implementation DEFERRED.** Audit of
-  `mfa_controller.ts` + `User.ts` found ZERO recovery-code support (no generation
-  at enrollment, no hashed storage, no login acceptance, no consumed state) vs
-  AUTH_DESIGN §4. Deferred (not built this session). Proposed design when built:
-  `User.generateRecoveryCodes()` (N one-time codes, hashed, in profile) called
-  from `enableMFA()`; `POST /mfa/verify-recovery-code` accepts + consumes a code
-  as a TOTP alternative at login. Layerable without changing existing TOTP logic,
-  but touches `User.ts` + a new route + the login gate → its own audit when built.
+- [done, session 9] **TOTP recovery codes.** Built + E2E-verified against all four
+  AUTH_DESIGN principles. `services/identity/recovery.ts` mirrors the email-login-
+  token template: 10 codes generated at MFA enrollment and returned **once**
+  (only sha256 hashes stored → API can't reproduce them); consumed **atomically**
+  under the in-process lock (single-use); **regeneration replaces the whole set**
+  (old codes die immediately); the `POST /mfa/verify-recovery-code` login endpoint
+  is **rate-limited** (5/15min per IP+visitorid, same as TOTP verify) and reachable
+  by a stage-1 session via the visitor_checker allowlist. `POST /mfa/recovery-codes`
+  regenerates (MFA-cleared session only). Codes are wiped on MFA-disable and account
+  deletion. Stored per-`auth_uid` on the disk adapter, not in the user profile, so
+  the OTP read-then-write race did not apply. Inherits the single-process constraint
+  above. Live-tested: enroll→use→reuse-blocked→regen-invalidates-old→disable-wipes
+  (store `{}` confirmed on disk)→rate-limit.
 - [accepted-risk, audit M3–M5] **Weak client E2E key-derivation (upstream crypto).**
   The client encrypts with crypto-es `AES.encrypt(data, passphrase)` passing a
   *string* passphrase (`src/services/encryption/index.ts`), so the AES key is
@@ -360,6 +376,22 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 > Newest first. One short entry per working session.
 
+- **(session 9, 2026-07-08)** **Full audit + TOTP recovery codes.** Pre-recovery-
+  codes audit of the M3–M6 security surface: found it solid (EdDSA JWTs alg-pinned,
+  argon2id, revocable sessions enforced at refresh, atomic single-use email tokens,
+  path-traversal-guarded atomic disk writes, layered rate limits). Top finding — a
+  deployment CONSTRAINT, now documented (§10 + a guard comment in
+  `docker-compose.yml`): the single-use / lost-update guarantees hold only for a
+  **single-process** API, because `withLock` is in-process (`saveObject` is atomic
+  per write, but a read-modify-write *sequence* isn't serialized across processes).
+  Fixed two low findings in `auth_controller.ts`: the email-OTP consume was a
+  non-atomic profile read-then-write (TOCTOU) → now an atomic locked
+  read-check-invalidate like `consumeEmailLoginToken`; and the OTP was compared with
+  `!==` → now `timingSafeEqual`. Then built **recovery codes** on the cleaned file
+  (see the [done, session 9] entry in §10) using the email-token template, and
+  live-verified all four principles + rate-limit + disable-cleanup. Not yet
+  committed at time of writing / awaiting review. **Next: M7** — ping to do the
+  Hetzner / Docker / Caddy / backup-restore design.
 - **(session 8, 2026-07-08)** **M6 complete: zero Google dependencies in either
   repo, verified by clean build with the packages absent** — the goal this whole
   project was founded on (§1). **Firebase dependency removed** from both repos;
