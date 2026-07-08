@@ -137,7 +137,17 @@ power/ISP/router. Home is ideal for the dev/staging instance.
       internal `services/firebase/*` dir (server) and `useFirebaseAuth` (client)
       keep their names for upstream-merge friendliness — they are self-hosted impls,
       not Firebase.
-- [ ] **M7 — Production deploy.** Hetzner VPS, Docker Compose (api + caddy +
+- [~] **M7 — Production deploy.** Infra built + verified (session 10), not yet on a
+      real VPS. In the api repo `self-hosted` branch: `/health` storage-probe
+      endpoint + Compose healthcheck; a full stack (Caddy auto-TLS same-origin,
+      single-process api, encrypted off-box backup sidecar — age asymmetric + rclone);
+      `SELF_HOSTING.md` + `BACKUP.md`. The **restore drill was run end-to-end** (tar →
+      age-encrypt → rclone → decrypt → boot throwaway API → 3/3 congregations decrypted
+      intact). Also closed a Google-dependency regression: mail was hardcoded to
+      Gmail's SMTP; now generic SMTP, and fails loud if `MAIL_ENABLED` without
+      `MAIL_HOST` (no Gmail default). Remaining: provision the Hetzner VPS, DNS,
+      build+place the client, `docker compose up`, and a real-S3 backup destination
+      (the drill used a local rclone target). Hetzner VPS, Docker Compose (api + caddy +
       volume), backups + restore drill, hardening pass (§M8 old list absorbed here).
 - [ ] **M8 — Roadmap features.** Begin "awaiting development" items.
 
@@ -376,6 +386,21 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 > Newest first. One short entry per working session.
 
+- **(session 10, 2026-07-08)** **M7 infra (health + backups + restore drill).**
+  Integrated an M7 pack into the api `self-hosted` branch (commits `ab03489`,
+  `f6b63fb`). Verified its three flagged placeholders against real code: the
+  Caddyfile `/api/*` matcher is correct (all routes under `/api/v3/*`); `COOKIE_SAMESITE`
+  didn't exist → implemented it in `cookieOptions` (closes audit §10 #4, lets a
+  same-origin Caddy deploy use SameSite=Lax); SMTP var names were wrong AND mail was
+  **hardcoded to Gmail** → made SMTP generic and fail-loud (no Google default — the
+  M6 regression). Caught two gaps in the pack: the backup service was missing its
+  `RCLONE_*` env, and the Dockerfile didn't ship `src/v3/views` (mail templates).
+  Wired `/health` (storage round-trip probe) + the backup sidecar. **Ran the restore
+  drill end-to-end** (age keypair → tar → encrypt → rclone → decrypt with off-box key
+  → boot throwaway API on the restored volume → 3/3 real congregations decrypted with
+  the live `SEC_ENCRYPT_KEY`). Dropped the pack's `HEALTH_AND_BACKUP_GUIDE.md`
+  (integration scaffolding, now consumed). M7 marked [~] — infra ready, real VPS
+  provisioning is the remaining step.
 - **(session 9, 2026-07-08)** **Full audit + TOTP recovery codes.** Pre-recovery-
   codes audit of the M3–M6 security surface: found it solid (EdDSA JWTs alg-pinned,
   argon2id, revocable sessions enforced at refresh, atomic single-use email tokens,
