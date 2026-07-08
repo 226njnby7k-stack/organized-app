@@ -17,6 +17,7 @@ import {
 } from '@definition/api';
 import { congregationCreateStepState } from '@states/app';
 import { settingSchema } from '@services/dexie/schema';
+import { IS_SELF_HOSTED } from '@constants/index';
 import useFeedback from '@features/app_start/shared/hooks/useFeedback';
 
 const useCongregationDetails = () => {
@@ -31,7 +32,7 @@ const useCongregationDetails = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [country, setCountry] = useState<CountryResponseType>(null);
   const [congregation, setCongregation] =
-    useState<CongregationResponseType>(null);
+    useState<CongregationResponseType | null>(null);
   const [userTmpFirstName, setUserTmpFirstName] = useState(
     settings.user_settings.firstname.value
   );
@@ -42,6 +43,28 @@ const useCongregationDetails = () => {
 
   const handleToggleApproval = (value: boolean) => {
     setIsElderApproved(value);
+  };
+
+  // Self-hosted: there is no external directory to pick from, so the admin types
+  // the congregation name directly. Build a minimal CongregationResponseType from
+  // it (only congName is sent to the API; the API supplies neutral defaults for
+  // circuit/location/meeting times that the admin edits later in settings). This
+  // keeps the existing null-checks / approval gate working unchanged.
+  const handleCongregationNameChange = (name: string) => {
+    setCongregation(
+      name.trim().length > 0
+        ? {
+            congGuid: '',
+            congName: name,
+            language: '',
+            address: '',
+            circuit: '',
+            location: { lat: 0, lng: 0 },
+            midweekMeetingTime: { weekday: 0, time: '' },
+            weekendMeetingTime: { weekday: 0, time: '' },
+          }
+        : null
+    );
   };
 
   const handleCongregationAction = async () => {
@@ -192,6 +215,8 @@ const useCongregationDetails = () => {
     handleToggleApproval,
     isElderApproved,
     congregation,
+    isSelfHosted: IS_SELF_HOSTED,
+    handleCongregationNameChange,
   };
 };
 

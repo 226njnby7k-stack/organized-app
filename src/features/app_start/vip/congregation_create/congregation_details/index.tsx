@@ -31,6 +31,8 @@ const CongregationDetails = () => {
     handleToggleApproval,
     isElderApproved,
     congregation,
+    isSelfHosted,
+    handleCongregationNameChange,
   } = useCongregationDetails();
 
   return (
@@ -93,12 +95,26 @@ const CongregationDetails = () => {
 
           <CountrySelector value={country} handleCountryChange={setCountry} />
 
-          {country !== null && (
-            <CongregationSelector
-              country_guid={country.countryGuid}
-              setCongregation={setCongregation}
-            />
-          )}
+          {country !== null &&
+            (isSelfHosted ? (
+              // Self-hosted: no external directory — type the congregation name.
+              // Meeting times / circuit / address start blank and are completed in
+              // congregation settings after creation.
+              <TextField
+                label={t('tr_congregationName')}
+                variant="outlined"
+                autoComplete="off"
+                required={true}
+                value={congregation?.congName ?? ''}
+                onChange={(e) => handleCongregationNameChange(e.target.value)}
+                sx={{ width: '100%' }}
+              />
+            ) : (
+              <CongregationSelector
+                country_guid={country.countryGuid}
+                setCongregation={setCongregation}
+              />
+            ))}
 
           <Checkbox
             label={t('tr_registeringApproved')}

@@ -96,6 +96,7 @@
   "tr_initialOrganizedSetupTitle": "Initial Organized setup",
   "tr_initialOrganizedSetupDescStep_1": "Define basic settings for your congregation in Organized. You can change that later on the Congregation settings page.",
   "tr_initialOrganizedSetupDescStep_2": "Finally, create your first Person record by adding yourself. As the administrator, you need to do this manually, just this once. Enter your basic info now, and you can add more details later on the Persons page.",
+  "tr_selfHostedCongregationSetupDesc": "Your congregation was created with blank details. Set your congregation number, Kingdom Hall address, circuit, and meeting days/times below — they start empty and at Tuesday/Saturday 00:00 until you fill them in. You can change these anytime on the Congregation settings page.",
   "tr_receivePushNotifications": "Receive push notifications",
   "tr_receivePushNotificationsDesc": "Allow Organized to send you useful notifications",
   "tr_firstLast": "First Last",

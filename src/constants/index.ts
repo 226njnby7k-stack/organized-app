@@ -452,6 +452,12 @@ export const POCKET_ROLES: AppRoleType[] = [
 
 export const APP_ENVIRONMENT = import.meta.env.VITE_APP_MODE;
 
+// M5.5: fully self-hosted deployment. When true, the client drops the external
+// sws2apps congregation-directory UX (directory search + "is your congregation
+// approved") and lets the admin type their congregation name directly; the API
+// must be started with SELF_HOSTED=true to match. Default false = upstream.
+export const IS_SELF_HOSTED = import.meta.env.VITE_SELF_HOSTED === 'true';
+
 export const isTest = APP_ENVIRONMENT === 'TEST';
 
 export const isStaging = APP_ENVIRONMENT === 'STAGING';
