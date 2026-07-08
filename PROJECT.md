@@ -111,8 +111,13 @@ power/ISP/router. Home is ideal for the dev/staging instance.
             `visitorChecker` + owner check; security-audited clean.
       - [ ] TOTP recovery codes — audited (absent vs §4), **deferred** with a
             proposed design (see §10). Carried forward.
-- [ ] **M5.5 — Self-hosted onboarding & congregation directory.** Sever the
-      external **sws2apps directory** dependency and fix first-run onboarding.
+- [x] **M5.5 — Self-hosted onboarding & congregation directory.** Done (server +
+      client, E2E-verified) — see §11 session 7. `SELF_HOSTED`/`VITE_SELF_HOSTED`
+      flags gate off the external directory: bundled static country list, no
+      directory gate on create (neutral defaults the admin completes in a prompted
+      InitialSetup editor). Remaining follow-up (not blocking): deeper entry-point
+      routing for congregation-less users (setup vs directory search).
+      Sever the external **sws2apps directory** dependency and fix first-run onboarding.
       Today `createCongregation` (`congregation_controller.ts`) refuses to create
       any congregation whose name isn't found in `APP_CONGREGATION_API`
       (`collect-api.sws2apps.com`), and the country list comes from
@@ -324,14 +329,15 @@ migrating blobs, but is no longer a Phase 1 dependency.
   `pocketVisitorChecker` now rejects any account whose `role !== 'pocket'`, so the
   cookie-only path is reachable only by genuine pocket accounts. Surfaced by the
   M4 re-audit, closed in the M3–M5 consolidation audit.
-- [open] **Congregation directory model for self-hosted (→ M5.5).** Upstream
-  gates congregation creation on the external sws2apps directory
-  (`APP_CONGREGATION_API`) and sources countries from `APP_COUNTRY_API`. For a
-  self-hosted instance this both breaks the "no external deps" goal and blocks
-  creating a congregation not in their list. Decide: keep a (self-hosted) global
-  directory concept, or drop it and let admins enter congregation details
-  directly? Leaning drop-it for self-hosted (invite gating already controls who
-  can register). Found during M4 E2E.
+- [decided, M5.5] **Congregation directory model for self-hosted: dropped.**
+  Upstream gated congregation creation on the external sws2apps directory
+  (`APP_CONGREGATION_API`) + sourced countries from `APP_COUNTRY_API`, which broke
+  "no external deps" and blocked creating a congregation not in their list. Decision:
+  **drop the directory for self-hosted** — behind `SELF_HOSTED`/`VITE_SELF_HOSTED`,
+  countries come from a bundled static list and admins enter congregation details
+  directly (no external validation; neutral defaults completed in settings). Shipped
+  + E2E-verified in session 7. The wider entry-point routing (congregation-less
+  users → "set up" vs directory search) remains a non-blocking follow-up.
 
 ---
 
@@ -339,6 +345,30 @@ migrating blobs, but is no longer a Phase 1 dependency.
 
 > Newest first. One short entry per working session.
 
+- **(session 7, 2026-07-08)** **M5.5 — self-hosted onboarding**, shipped + verified
+  end-to-end in a real browser. Server (api `4a5d5c8`): `SELF_HOSTED=true` serves a
+  bundled static ISO country list (`constant/countries.ts`, 267 entries, shape
+  matches the client so no client change needed), disables directory search, and
+  `createCongregation` skips the external "is this congregation authentic" gate,
+  building the congregation from user-entered details with neutral defaults
+  (Tue/Sat 00:00 meetings, blank circuit/location the admin fills later). Client
+  (`543246d4`): `VITE_SELF_HOSTED` swaps the directory-search autocomplete (which
+  gated the submit button on an empty instance) for a plain congregation-name text
+  field, and the post-creation `InitialSetup` dialog now clearly prompts for the
+  blank fields + embeds the existing `CongregationBasic` editor so they're editable
+  right after creation. **CORS regression found + fixed** (`cc2e375`): session-6's
+  CORS consolidation (`3429305`) had dropped the header reflection the `cors()`
+  package provided, hardcoding `Allow-Headers: Content-Type, Authorization` and so
+  silently blocking `token-login` (the one credentialed call — the client also
+  sends `appclient`/`appversion`/`language`/`metadata`); now reflects the requested
+  headers. **In-browser E2E (Cypress)** drove the whole flow: passwordless login →
+  create with the self-hosted name field → 267 static countries → `PUT 200` →
+  neutral defaults confirmed on disk (decrypted) → `InitialSetup` prompt + editable
+  Number/Circuit/KH-address fields visually confirmed. This closed the earlier
+  "missing congregation fields" worry with visual proof, not just logic (§10 had
+  already shown the create flow is byte-identical to upstream — never a regression).
+  E2E test lives at `cypress/e2e/selfhosted.cy.ts` (needs `SELF_HOSTED=true` API +
+  `VITE_SELF_HOSTED=true` client; not wired into CI).
 - **(session 6, 2026-07-07)** M3–M5 consolidation **security audit + hardening**.
   Ran an adversarial multi-angle audit over everything built in M3–M5 (de-Googling
   seam: disk storage, self-hosted identity, api_settings, register-password),
