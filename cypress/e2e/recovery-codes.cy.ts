@@ -17,6 +17,7 @@ describe('MFA recovery codes UI', () => {
     cy.intercept('POST', '**/user-passwordless-login').as('pwless');
     cy.intercept('GET', '**/congregations/countries*').as('countries');
     cy.intercept('PUT', '**/api/v3/congregations').as('congCreate');
+    cy.intercept('POST', '**/mfa/verify-recovery-code').as('recoveryLogin');
 
     let otp = '';
 
@@ -116,16 +117,52 @@ describe('MFA recovery codes UI', () => {
     cy.contains('Recovery codes', { timeout: 15000 }).should('be.visible');
     cy.contains(/shown only now|save these codes/i).should('be.visible');
     cy.contains('button', /I have saved my codes/i).should('be.visible');
-    // the 10 codes are the xxxx-xxxx-xxxx-xxxx hex pattern (shown only here)
+    // capture the codes (xxxx-xxxx-xxxx-xxxx hex pattern, shown only here)
+    let recoveryCode = '';
     cy.get('body').invoke('text').then((txt) => {
       const codes = txt.match(/[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}/g) || [];
       expect(codes.length, 'ten recovery codes displayed').to.be.gte(10);
+      recoveryCode = codes[0];
     });
     cy.screenshot('r04-recovery-codes', { capture: 'viewport' });
-
-    // the settings "regenerate" row is now present (shown once MFA is enabled)
-    cy.contains(/regenerate recovery codes/i).should('exist');
-
+    cy.contains(/regenerate recovery codes/i).should('exist'); // Part 3 row present
     cy.contains('button', /I have saved my codes/i).click();
+
+    // --- Part 2: log out, then log back in USING a recovery code (the lockout path) ---
+    cy.contains('button', /log out/i, { timeout: 15000 }).click();
+    // confirm dialog: click the confirm button scoped to *this* dialog (not the header)
+    cy.contains('Log out and clear the local data', { timeout: 10000 })
+      .parent()
+      .contains('button', /log out/i)
+      .click();
+
+    cy.contains('Welcome to Organized', { timeout: 40000 }).should('be.visible');
+    cy.contains('Email login').click();
+    cy.wait(1000);
+    cy.get('body').then(($b) => {
+      if ($b.text().includes('App functionality and data privacy')) {
+        cy.get('input[type="checkbox"]').last().scrollIntoView().check({ force: true });
+        cy.contains('button', 'Next').scrollIntoView().click({ force: true });
+      }
+    });
+    cy.get('input[type="text"], input:not([type])').filter(':visible').first().type(email, { force: true });
+    cy.contains('button', 'Send Link').should('not.be.disabled').click();
+    cy.wait('@pwless', { timeout: 20000 }).then((i) => { otp = String((i.response?.body as { otp?: string }).otp ?? ''); });
+    cy.get('.MuiOtpInput-Box input').should('have.length.gte', 6);
+    cy.get('.MuiOtpInput-Box input').first().click().should('be.focused');
+    cy.then(() => otp.split('').forEach((d) => cy.focused().type(d, { delay: 80 })));
+
+    // MFA gate -> "I lost my authenticator" -> use a recovery code
+    cy.contains(/Use a recovery code instead/i, { timeout: 25000 }).click();
+    cy.screenshot('r05-recovery-login-input', { capture: 'viewport' });
+    cy.then(() => typeInField('Recovery code', recoveryCode));
+    cy.contains('button', /verify/i).click();
+
+    // definitive: the recovery code was accepted and the user is authenticated
+    cy.wait('@recoveryLogin', { timeout: 40000 }).then((i) => {
+      expect(i.response?.statusCode, 'recovery-code login succeeded').to.eq(200);
+      expect(i.response?.body, 'authenticated user returned').to.have.property('id');
+    });
+    cy.screenshot('r06-recovery-login-success', { capture: 'viewport' });
   });
 });
