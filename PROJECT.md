@@ -389,9 +389,15 @@ migrating blobs, but is no longer a Phase 1 dependency.
   read-check-invalidate like `consumeEmailLoginToken`; and the OTP was compared with
   `!==` → now `timingSafeEqual`. Then built **recovery codes** on the cleaned file
   (see the [done, session 9] entry in §10) using the email-token template, and
-  live-verified all four principles + rate-limit + disable-cleanup. Not yet
-  committed at time of writing / awaiting review. **Next: M7** — ping to do the
-  Hetzner / Docker / Caddy / backup-restore design.
+  live-verified all four principles + rate-limit + disable-cleanup. Also shipped
+  the **client recovery-codes UI** — enrollment shows the codes once (copy +
+  download), the MFA login screen has a "use a recovery code instead" path, and
+  Security has a regenerate action. **E2E-verified the full lockout path**
+  (`cypress/e2e/recovery-codes.cy.ts`): enroll → codes shown → log out → log back
+  in → "use a recovery code" → `verify-recovery-code` 200 → back in the app. All
+  committed + pushed (api `e494cdd`/`f635748`/`4779cbc`; client recovery UI + two
+  E2E commits). **The auth/security track is complete.** **Next: M7** — ping to do
+  the Hetzner / Docker / Caddy / backup-restore design.
 - **(session 8, 2026-07-08)** **M6 complete: zero Google dependencies in either
   repo, verified by clean build with the packages absent** — the goal this whole
   project was founded on (§1). **Firebase dependency removed** from both repos;
