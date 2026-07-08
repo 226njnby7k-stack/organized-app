@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Box, Stack } from '@mui/material';
 import { useAppTranslation } from '@hooks/index';
 import { IconDelete } from '@components/icons';
@@ -9,6 +10,7 @@ import useSecurity from './useSecurity';
 import Divider from '@components/divider';
 import MFAEnable from './mfaEnable';
 import MFADisable from './mfaDisable';
+import RegenerateRecoveryCodes from './regenerate_recovery';
 import Button from '@components/button';
 import Switch from '@components/switch';
 import SwitcherContainer from '@components/switcher_container';
@@ -30,10 +32,19 @@ const Security = () => {
     isAccountDelete,
   } = useSecurity();
 
+  const [isRegenOpen, setIsRegenOpen] = useState(false);
+
   return (
     <ProfileItemContainer>
       {isOpenMFAEnable && (
         <MFAEnable open={isOpenMFAEnable} onClose={handleCloseDialog} />
+      )}
+
+      {isRegenOpen && (
+        <RegenerateRecoveryCodes
+          open={isRegenOpen}
+          onClose={() => setIsRegenOpen(false)}
+        />
       )}
 
       {isOpenMFADisable && (
@@ -63,6 +74,34 @@ const Security = () => {
                 </Typography>
               </Box>
             </SwitcherContainer>
+          </SettingWithBorderContainer>
+        )}
+
+        {accountType === 'vip' && isMFAEnabled && (
+          <SettingWithBorderContainer>
+            <Box
+              sx={{ display: 'flex', flexDirection: 'column', gap: '8px' }}
+            >
+              <Box
+                sx={{ display: 'flex', flexDirection: 'column', gap: '4px' }}
+              >
+                <Typography>{t('tr_recoveryCodesTitle')}</Typography>
+                <Typography
+                  className="label-small-regular"
+                  color="var(--grey-350)"
+                >
+                  {t('tr_recoveryCodesSettingDesc')}
+                </Typography>
+              </Box>
+              <Button
+                variant="secondary"
+                disableAutoStretch
+                onClick={() => setIsRegenOpen(true)}
+                sx={{ alignSelf: 'flex-start' }}
+              >
+                {t('tr_recoveryCodesRegenerate')}
+              </Button>
+            </Box>
           </SettingWithBorderContainer>
         )}
 

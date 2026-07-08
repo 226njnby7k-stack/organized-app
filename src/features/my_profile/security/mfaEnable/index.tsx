@@ -6,6 +6,7 @@ import useMFAEnable from './useMFAEnable';
 import Button from '@components/button';
 import Dialog from '@components/dialog';
 import OTPInput from '@components/otp_input';
+import RecoveryCodes from '@components/recovery_codes';
 import Tabs from '@components/tabs';
 import TextField from '@components/textfield';
 import Typography from '@components/typography';
@@ -30,10 +31,29 @@ const MFAEnable = ({ open, onClose }: MFAEnableType) => {
     imgSrc,
     codeError,
     tokenDev,
+    recoveryCodes,
+    handleDone,
   } = useMFAEnable(onClose);
 
   return (
     <Dialog onClose={onClose} open={open}>
+      {recoveryCodes ? (
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            width: '100%',
+          }}
+        >
+          <Typography className="h2">{t('tr_recoveryCodesTitle')}</Typography>
+          <RecoveryCodes codes={recoveryCodes} />
+          <Button variant="main" onClick={handleDone}>
+            {t('tr_recoveryCodesSavedBtn')}
+          </Button>
+        </Box>
+      ) : (
+      <>
       <Box
         sx={{
           display: 'flex',
@@ -211,6 +231,8 @@ const MFAEnable = ({ open, onClose }: MFAEnableType) => {
             </Button>
           </Box>
         </>
+      )}
+      </>
       )}
     </Dialog>
   );

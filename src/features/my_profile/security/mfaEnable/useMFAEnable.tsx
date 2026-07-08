@@ -26,6 +26,7 @@ const useMFAEnable = (closeDialog: VoidFunction) => {
   const [userOTP, setUserOTP] = useState('');
   const [codeError, setCodeError] = useState(false);
   const [tokenDev, setTokenDev] = useState<string>(undefined);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>(null);
 
   const handleCopyTokenClipboard = async () => {
     await navigator.clipboard.writeText(token);
@@ -53,13 +54,21 @@ const useMFAEnable = (closeDialog: VoidFunction) => {
       if (result.status === 200) {
         setIsMFAEnabled(true);
         setIsProcessing(false);
-        closeDialog();
 
         displaySnackNotification({
           header: t('tr_2FAEnabled'),
           message: t('tr_2FAEnabledDesc'),
           severity: 'success',
         });
+
+        // Enrollment returns one-time recovery codes — show them and keep the
+        // dialog open so the user can save them before closing.
+        const codes = result.data?.recovery_codes as string[] | undefined;
+        if (codes?.length > 0) {
+          setRecoveryCodes(codes);
+        } else {
+          closeDialog();
+        }
 
         return;
       }
@@ -131,6 +140,8 @@ const useMFAEnable = (closeDialog: VoidFunction) => {
     imgSrc,
     codeError,
     tokenDev,
+    recoveryCodes,
+    handleDone: closeDialog,
   };
 };
 

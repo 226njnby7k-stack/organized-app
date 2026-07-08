@@ -100,6 +100,48 @@ export const apiHandleVerifyOTP = async (userOTP: string) => {
   return { status: res.status, data };
 };
 
+// MFA recovery-code login (break-glass alternative to TOTP)
+export const apiHandleVerifyRecoveryCode = async (recoveryCode: string) => {
+  const { apiHost, appVersion: appversion, idToken } = await apiDefault();
+
+  const res = await fetch(`${apiHost}api/v3/mfa/verify-recovery-code`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+      appclient: 'organized',
+      appversion,
+    },
+    body: JSON.stringify({ code: recoveryCode }),
+  });
+
+  const data = await res.json();
+
+  return { status: res.status, data };
+};
+
+// Regenerate the recovery-code set (invalidates the old one); returns new codes once
+export const apiRegenerateRecoveryCodes = async () => {
+  const { apiHost, appVersion: appversion, idToken } = await apiDefault();
+
+  const res = await fetch(`${apiHost}api/v3/mfa/recovery-codes`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${idToken}`,
+      appclient: 'organized',
+      appversion,
+    },
+    body: JSON.stringify({}),
+  });
+
+  const data = await res.json();
+
+  return { status: res.status, data };
+};
+
 export const apiValidateMe = async (): Promise<ValidateMeResponseType> => {
   const { apiHost, appVersion: appversion, idToken } = await apiDefault();
 

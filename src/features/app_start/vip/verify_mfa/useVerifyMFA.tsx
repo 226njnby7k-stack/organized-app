@@ -3,7 +3,7 @@ import { useAtomValue, useSetAtom } from 'jotai';
 import { useAppTranslation } from '@hooks/index';
 import { displayOnboardingFeedback } from '@services/states/app';
 import { getMessageByCode } from '@services/i18n/translation';
-import { apiHandleVerifyOTP } from '@services/api/user';
+import { apiHandleVerifyOTP, apiHandleVerifyRecoveryCode } from '@services/api/user';
 import {
   isEncryptionCodeOpenState,
   isUnauthorizedRoleState,
@@ -35,10 +35,23 @@ const useVerifyMFA = () => {
 
   const [code, setCode] = useState('');
   const [hasError, setHasError] = useState(false);
+  const [useRecovery, setUseRecovery] = useState(false);
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleGoBack = () => {
     setIsMfaVerify(false);
     setIsUserSignIn(true);
+  };
+
+  const handleToggleRecovery = () => {
+    setHasError(false);
+    setUseRecovery((prev) => !prev);
+  };
+
+  const handleRecoveryChange = (value: string) => {
+    setHasError(false);
+    setRecoveryCode(value);
   };
 
   const handleCodeChange = (value: string) => {
@@ -179,6 +192,43 @@ const useVerifyMFA = () => {
     }
   };
 
+  const handleVerifyRecovery = async () => {
+    if (isProcessing || recoveryCode.trim().length === 0) return;
+
+    try {
+      setIsProcessing(true);
+
+      const { data, status } = await apiHandleVerifyRecoveryCode(
+        recoveryCode.trim()
+      );
+
+      if (status === 403) {
+        setHasError(true);
+        displayOnboardingFeedback({
+          title: t('tr_2FAIncorrect'),
+          message: t('tr_recoveryCodeIncorrectDesc'),
+        });
+        showMessage();
+        return;
+      }
+
+      if (status !== 200) {
+        throw new Error(data?.message);
+      }
+
+      await handleAuthorization(data);
+    } catch (error) {
+      console.error(error);
+      displayOnboardingFeedback({
+        title: t('error_app_generic-title'),
+        message: getMessageByCode(error.message),
+      });
+      showMessage();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   return {
     title,
     message,
@@ -189,6 +239,12 @@ const useVerifyMFA = () => {
     hasError,
     handleGoBack,
     tokenDev,
+    useRecovery,
+    recoveryCode,
+    isProcessing,
+    handleToggleRecovery,
+    handleRecoveryChange,
+    handleVerifyRecovery,
   };
 };
 
